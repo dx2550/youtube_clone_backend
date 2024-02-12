@@ -6,10 +6,10 @@ const upload = require("../middlewares/multer.middleware.js")
 
 
 router.route('/register').post(
-    
+
     upload.fields([
         {
-            name: "avtar",
+            name: "avatar",
             maxCount: 1
         },
         {
