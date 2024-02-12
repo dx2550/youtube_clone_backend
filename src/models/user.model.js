@@ -12,7 +12,6 @@ const userSchema = new mongoose.Schema({
         trim: true,
         index: true,
     },
-
     email: {
         type: String,
         required: true,
@@ -28,7 +27,7 @@ const userSchema = new mongoose.Schema({
         index: true,
     },
 
-    avtar: {
+    avatar: {
         type: String, ///it is used for storing avtar images in cloudnary
         required: true,
     },
@@ -43,12 +42,15 @@ const userSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "Video"
         }
+
     ],
+
     password: {
         type: String,
         required: [true, "Passwrod is required"],
 
     },
+
     refreshToken: {
         type: String,
     }
@@ -57,10 +59,11 @@ const userSchema = new mongoose.Schema({
 
 
 userSchema.pre("save", async function (next) {
-
+    
     if (!this.isModified("password")) return next()
 
-    this.password = bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 10)
+    
     next()
 })
 
@@ -72,12 +75,10 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 userSchema.methods.generateAccessToken = async function () {
 
     return jwt.sign({
-
         _id: this._id,
         username: this.username,
         email: this.email,
         fullname: this.fullname,
-
     }, process.env.ACCESS_TOKEN_SECRET,
         {
             expiresIn: process.env.ACCESS_TOKEN_EXPIRY

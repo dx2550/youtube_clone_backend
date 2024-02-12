@@ -1,7 +1,7 @@
 const cloudinary = require('cloudinary').v2
 
 
-import { v2 as cloudinary } from 'cloudinary';
+// import { v2 as cloudinary } from 'cloudinary';
 const fs = require('fs')
 
 const uploadOnCloudinary = async (localfilepath) => {
