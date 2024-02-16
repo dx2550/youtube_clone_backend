@@ -10,17 +10,15 @@ const { default: mongoose } = require("mongoose");
 
 const generateAccessAndRefreshToken = async (userID) => {
     try {
-
+        console.log("called");
 
         const user = await User.findById(userID)
 
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
         user.refreshToken = refreshToken
 
         await user.save({ validateBeforeSave: false })
-
-
         return { accessToken, refreshToken }
 
     } catch (error) {
@@ -93,10 +91,15 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new apiErrors(500, "something went wrong while registring the user")
     }
 
-    return res.status(201).json(
+    return res.status(201)
+        .clearCookie('refreshToken')
+        .clearCookie('accessToken')
+        .clearCookie('refrreshtoken')
+        .clearCookie('accesstoken')
+        .clearCookie('refreshtoken').json(
 
-        new ApiResponse(200, createdUser, "User Registered Successfully")
-    )
+            new ApiResponse(200, createdUser, "User Registered Successfully")
+        )
 
 })
 
@@ -116,9 +119,8 @@ const loginUser = asyncHandler(async (req, res) => {
     if (!user) {
         throw new apiErrors(404, "user does not exists")
     }
-
+    // console.log("user", user);
     const isPasswordValid = await user.isPasswordCorrect(password)
-    console.log("password", isPasswordValid);
     if (!isPasswordValid) {
         throw new apiErrors(404, "password is not matched")
     }
@@ -126,20 +128,14 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
 
-
+    console.log("acc", typeof accessToken, "ref", refreshToken);
     const logginUser = await User.findById(user._id).select("-password -refreshToken")
 
-    const options = {
-        httpOnly: true,
-        secure: true
-    }
-
-    // console.log("accT",res.cookie.accessToken,"refT",res.cookie.refreshToken);
 
     return res
         .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken)
+        .cookie("refreshToken", refreshToken)
         .json(
             new ApiResponse(200,
                 {
@@ -376,7 +372,8 @@ const getChannelProfile = asyncHandler(async (req, res) => {
                     }
                 }
             }
-        }, {
+        }, 
+        {
             $project: {
                 fullname: 1,
                 username: 1,
@@ -386,7 +383,6 @@ const getChannelProfile = asyncHandler(async (req, res) => {
                 avatar: 1,
                 coverimage: 1,
                 email: 1,
-
             }
         }
 
@@ -418,10 +414,41 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             }
         }, {
             $lookup: {
-                
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [{
+                                $project: {
+                                    fullname: 1,
+                                    username: 1,
+                                    avatar: 1
+                                }
+                            }]
+
+                        },
+                    }, {
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+
+                ]
             }
         }
     ])
+
+
+    return res.status(200).json(new ApiResponse(200, user[0].watchHistory), " Watch History Fetched ")
 
 })
 
